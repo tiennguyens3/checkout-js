@@ -52,6 +52,8 @@ enum PaymentMethodId {
     StripeV3 = 'stripev3',
     StripeUPE = 'stripeupe',
     Zip = 'zip',
+    WAAVECheckout = 'waavecheckout',
+    WAAVEDirect = 'waavedirect'
 }
 
 export default PaymentMethodId;

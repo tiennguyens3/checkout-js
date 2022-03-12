@@ -52,6 +52,7 @@ interface WithCheckoutPaymentProps {
     isPaymentDataRequired(): boolean;
     loadCheckout(): Promise<CheckoutSelectors>;
     loadPaymentMethods(): Promise<CheckoutSelectors>;
+    getCheckoutState(): CheckoutSelectors;
     submitOrder(values: OrderRequestBody): Promise<CheckoutSelectors>;
 }
 
@@ -367,6 +368,7 @@ class Payment extends Component<PaymentProps & WithCheckoutPaymentProps & WithLa
     };
 
     private handleSubmit: (values: PaymentFormValues) => void = async values => {
+        debugger
         const {
             defaultMethod,
             loadPaymentMethods,
@@ -375,6 +377,8 @@ class Payment extends Component<PaymentProps & WithCheckoutPaymentProps & WithLa
             onSubmit = noop,
             onSubmitError = noop,
             submitOrder,
+            getCheckoutState,
+            onUnhandledError
         } = this.props;
 
         const {
@@ -391,6 +395,157 @@ class Payment extends Component<PaymentProps & WithCheckoutPaymentProps & WithLa
         }
 
         try {
+            if (selectedMethod && selectedMethod.id === PaymentMethodId.WAAVECheckout) {
+                const checkoutState = getCheckoutState();
+
+                const products:any[] = [];
+                const lineItems = checkoutState.data.getCart()?.lineItems;
+                lineItems?.customItems?.map(item => products.push(item));
+                lineItems?.digitalItems?.map(item => products.push(item));
+                lineItems?.giftCertificates?.map(item => products.push(item));
+                lineItems?.physicalItems?.map(item => products.push(item));
+
+                const discount_amount = checkoutState.data.getCoupons()?.reduce((accumulator, currentValue) => {
+                    return accumulator + currentValue.discountedAmount
+                }, 0);
+
+                const storeProfile = checkoutState.data.getConfig()?.storeProfile;
+                const links = checkoutState.data.getConfig()?.links;
+
+                const billingAddress = checkoutState.data.getBillingAddress();
+                const consignments = checkoutState.data.getConsignments();
+
+                const shippingAddress = consignments ? consignments[0].shippingAddress : {};
+                const shippingOption = consignments ? consignments[0].selectedShippingOption : {};
+
+                const customer = checkoutState.data.getCustomer();
+
+                const body = {
+                    products,
+                    billing_address: billingAddress,
+                    shipping_address: shippingAddress,
+                    shipping_option: shippingOption,
+                    discount_amount,
+                    customer_id: customer ? customer.id : 0,
+                    storeProfile,
+                    links
+                };
+
+                const createOrderUrl = 'http://localhost/bigcommerce/checkout';
+                // const createOrderUrl = 'https://staging-pg.getwaave.co/bigcommerce/checkout';
+                // const createOrderUrl = 'https://pg.getwaave.co/bigcommerce/checkout';
+
+                fetch(createOrderUrl, {
+                    credentials: 'include',
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Accept': 'application/json'
+                    },
+                    body: JSON.stringify(body)
+                })
+                .then(response => response.json())
+                .then(result => {
+                    if (false === result.success) {
+                        onUnhandledError(new Error(result.message));
+                        return;
+                    }
+
+                    // Clear the cart and redirect to WAAVE Payment Gateway
+                    const cartId = checkoutState.data.getCart()?.id;
+                    fetch('api/storefront/carts/' + cartId, {
+                        method: "DELETE",
+                        credentials: 'include'
+                    }).then(() => {
+                        console.log("I'am here");
+                    });
+                })
+                .catch(error => {
+                    onUnhandledError(error);
+                });
+
+                return;
+            }
+
+            if (selectedMethod && selectedMethod.id === PaymentMethodId.WAAVEDirect) {
+                const checkoutState = getCheckoutState();
+
+                const products:any[] = [];
+                const lineItems = checkoutState.data.getCart()?.lineItems;
+                lineItems?.customItems?.map(item => products.push(item));
+                lineItems?.digitalItems?.map(item => products.push(item));
+                lineItems?.giftCertificates?.map(item => products.push(item));
+                lineItems?.physicalItems?.map(item => products.push(item));
+
+                const discount_amount = checkoutState.data.getCoupons()?.reduce((accumulator, currentValue) => {
+                    return accumulator + currentValue.discountedAmount
+                }, 0);
+
+                const storeProfile = checkoutState.data.getConfig()?.storeProfile;
+                const links = checkoutState.data.getConfig()?.links;
+
+                const billingAddress = checkoutState.data.getBillingAddress();
+                const consignments = checkoutState.data.getConsignments();
+
+                const shippingAddress = consignments ? consignments[0].shippingAddress : {};
+                const shippingOption = consignments ? consignments[0].selectedShippingOption : {};
+
+                const customer = checkoutState.data.getCustomer();
+
+                const card_information = {
+                    values.cardNumber,
+                    values.cardExpiry,
+                    values.cardCode,
+                }
+
+                const body = {
+                    products,
+                    billing_address: billingAddress,
+                    shipping_address: shippingAddress,
+                    shipping_option: shippingOption,
+                    discount_amount,
+                    customer_id: customer ? customer.id : 0,
+                    storeProfile,
+                    links,
+                    card_information
+                };
+
+                const createOrderUrl = 'http://localhost/bigcommerce/direct';
+                // const createOrderUrl = 'https://staging-pg.getwaave.co/bigcommerce/direct';
+                // const createOrderUrl = 'https://pg.getwaave.co/bigcommerce/direct';
+
+                fetch(createOrderUrl, {
+                    credentials: 'include',
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Accept': 'application/json'
+                    },
+                    body: JSON.stringify(body)
+                })
+                .then(response => response.json())
+                .then(result => {
+                    if (false === result.success) {
+                        onUnhandledError(new Error(result.message));
+                        return;
+                    }
+
+                    // Clear the cart and redirect to WAAVE Payment Gateway
+                    const cartId = checkoutState.data.getCart()?.id;
+                    fetch('api/storefront/carts/' + cartId, {
+                        method: "DELETE",
+                        credentials: 'include'
+                    }).then(() => {
+                        console.log("I'am here");
+                    });
+                })
+                .catch(error => {
+                    onUnhandledError(error);
+                });
+
+                return;
+            }
+
             await submitOrder(mapToOrderRequestBody(values, isPaymentDataRequired()));
             onSubmit();
         } catch (error) {
@@ -534,6 +689,31 @@ export function mapToPaymentProps({
         filteredMethods = filteredMethods;
     }
 
+    filteredMethods.push(
+        {
+        "id": "waavecheckout",
+        "method": "",
+        "type": "",
+        "supportedCards": [],
+        "config": {
+            "displayName": "WAAVE Checkout: Credit & Debit Cards, Fast & Safe",
+            "testMode": false,
+            "logo": "https://pg.getwaave.co/img/logo.png"
+        }
+    },
+    {
+        "id": "waavedirect",
+        "method": "",
+        "type": "",
+        "supportedCards": [],
+        "config": {
+            "displayName": "Credit and Debit Cards Payment - powered by WAAVE",
+            "testMode": false,
+            "logo": "https://pg.getwaave.co/img/logo.png"
+        }
+    }
+    );
+
     return {
         applyStoreCredit: checkoutService.applyStoreCredit,
         availableStoreCredit: customer.storeCredit,
@@ -549,6 +729,7 @@ export function mapToPaymentProps({
         isSubmittingOrder: isSubmittingOrder(),
         isTermsConditionsRequired,
         loadPaymentMethods: checkoutService.loadPaymentMethods,
+        getCheckoutState: checkoutService.getState,
         methods: filteredMethods,
         shouldExecuteSpamCheck: checkout.shouldExecuteSpamCheck,
         shouldLocaliseErrorMessages: features['PAYMENTS-6799.localise_checkout_payment_error_messages'],

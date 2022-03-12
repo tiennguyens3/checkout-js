@@ -39,6 +39,8 @@ import SquarePaymentMethod from './SquarePaymentMethod';
 import StripePaymentMethod from './StripePaymentMethod';
 import StripeUPEPaymentMethod from './StripeUPEPaymentMethod';
 import VisaCheckoutPaymentMethod from './VisaCheckoutPaymentMethod';
+import WAAVEDirectPaymentMethod from './WAAVEDirectPaymentMethod';
+import WAAVECheckoutPaymentMethod from './WAAVECheckoutPaymentMethod';
 
 export interface PaymentMethodProps {
     method: PaymentMethod;
@@ -229,6 +231,15 @@ const PaymentMethodComponent: FunctionComponent<PaymentMethodProps & WithCheckou
     if (method.gateway === PaymentMethodId.Mollie) {
         return <MolliePaymentMethod { ...props } />;
     }
+
+    if(method.id === PaymentMethodId.WAAVEDirect) {
+        return <WAAVEDirectPaymentMethod { ...props } />;
+    }
+
+    if (method.id === PaymentMethodId.WAAVECheckout) {
+        return <WAAVECheckoutPaymentMethod { ...props } />
+    }
+
     // NOTE: Some payment methods have `method` as `credit-card` but they are
     // actually not. Therefore, as a workaround, we are doing the following
     // check last.
