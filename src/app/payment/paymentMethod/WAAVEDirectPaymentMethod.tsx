@@ -72,19 +72,15 @@ class WAAVEDirectPaymentMethod extends Component<
             method,
             onUnhandledError = noop,
             setValidationSchema,
-            setSubmit,
         } = this.props;
 
         setValidationSchema(method, this.getValidationSchema());
         configureCardValidator();
-        setSubmit(method, this.createOrder);
 
         try {
             if (isInstrumentFeatureAvailableProp) {
                 await loadInstruments();
             }
-
-            console.log(method);
         } catch (error) {
             onUnhandledError(error);
         }
@@ -95,14 +91,11 @@ class WAAVEDirectPaymentMethod extends Component<
             method,
             onUnhandledError = noop,
             setValidationSchema,
-            setSubmit
         } = this.props;
 
         setValidationSchema(method, null);
-        setSubmit(method, null);
 
         try {
-            console.log(method);
         } catch (error) {
             onUnhandledError(error);
         }
@@ -125,7 +118,6 @@ class WAAVEDirectPaymentMethod extends Component<
         if (selectedInstrumentId !== prevState.selectedInstrumentId ||
             isAddingNewCard !== prevState.isAddingNewCard) {
             try {
-               console.log(method);
             } catch (error) {
                 onUnhandledError(error);
             }
@@ -187,10 +179,6 @@ class WAAVEDirectPaymentMethod extends Component<
                 </div>
             </LoadingOverlay>
         );
-    }
-
-    private createOrder() {
-        console.log(this);
     }
 
     private getSelectedInstrument(): CardInstrument | undefined {

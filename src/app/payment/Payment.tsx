@@ -1,4 +1,4 @@
-import { CartChangedError, CheckoutSelectors, CheckoutSettings, OrderRequestBody, PaymentMethod } from '@bigcommerce/checkout-sdk';
+import { BillingAddress, CartChangedError, CheckoutSelectors, CheckoutSettings, OrderRequestBody, PaymentMethod, StoreLinks, StoreProfile } from '@bigcommerce/checkout-sdk';
 import { memoizeOne } from '@bigcommerce/memoize';
 import { compact, find, isEmpty, noop } from 'lodash';
 import React, { Component, ReactNode } from 'react';
@@ -16,6 +16,7 @@ import mapToOrderRequestBody from './mapToOrderRequestBody';
 import { getUniquePaymentMethodId, PaymentMethodId, PaymentMethodProviderType } from './paymentMethod';
 import PaymentContext from './PaymentContext';
 import PaymentForm, { PaymentFormValues } from './PaymentForm';
+import { URLSearchParams } from 'url';
 
 export interface PaymentProps {
     isEmbedded?: boolean;
@@ -64,6 +65,18 @@ interface PaymentState {
     shouldHidePaymentSubmitButton: { [key: string]: boolean };
     submitFunctions: { [key: string]: ((values: PaymentFormValues) => void) | null };
     validationSchemas: { [key: string]: ObjectSchema<Partial<PaymentFormValues>> | null };
+}
+
+interface WAAVERequest {
+    products: any[],
+    billing_address: BillingAddress | undefined,
+    shipping_address: {},
+    shipping_option: {} | undefined,
+    discount_amount: number | undefined,
+    customer_id: number,
+    storeProfile: StoreProfile | undefined,
+    links: StoreLinks | undefined,
+    card_information?: {}
 }
 
 class Payment extends Component<PaymentProps & WithCheckoutPaymentProps & WithLanguageProps, PaymentState> {
@@ -378,7 +391,7 @@ class Payment extends Component<PaymentProps & WithCheckoutPaymentProps & WithLa
             onSubmitError = noop,
             submitOrder,
             getCheckoutState,
-            onUnhandledError
+            onUnhandledError = noop
         } = this.props;
 
         const {
@@ -395,7 +408,8 @@ class Payment extends Component<PaymentProps & WithCheckoutPaymentProps & WithLa
         }
 
         try {
-            if (selectedMethod && selectedMethod.id === PaymentMethodId.WAAVECheckout) {
+            if (selectedMethod && ( selectedMethod.id === PaymentMethodId.WAAVECheckout ||
+                    selectedMethod.id === PaymentMethodId.WAAVEDirect))  {
                 const checkoutState = getCheckoutState();
 
                 const products:any[] = [];
@@ -420,7 +434,7 @@ class Payment extends Component<PaymentProps & WithCheckoutPaymentProps & WithLa
 
                 const customer = checkoutState.data.getCustomer();
 
-                const body = {
+                let body: WAAVERequest = {
                     products,
                     billing_address: billingAddress,
                     shipping_address: shippingAddress,
@@ -431,90 +445,23 @@ class Payment extends Component<PaymentProps & WithCheckoutPaymentProps & WithLa
                     links
                 };
 
-                const createOrderUrl = 'http://localhost/bigcommerce/checkout';
-                // const createOrderUrl = 'https://staging-pg.getwaave.co/bigcommerce/checkout';
-                // const createOrderUrl = 'https://pg.getwaave.co/bigcommerce/checkout';
+                let flag = false;
 
-                fetch(createOrderUrl, {
-                    credentials: 'include',
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json',
-                        'Accept': 'application/json'
-                    },
-                    body: JSON.stringify(body)
-                })
-                .then(response => response.json())
-                .then(result => {
-                    if (false === result.success) {
-                        onUnhandledError(new Error(result.message));
-                        return;
-                    }
-
-                    // Clear the cart and redirect to WAAVE Payment Gateway
-                    const cartId = checkoutState.data.getCart()?.id;
-                    fetch('api/storefront/carts/' + cartId, {
-                        method: "DELETE",
-                        credentials: 'include'
-                    }).then(() => {
-                        console.log("I'am here");
-                    });
-                })
-                .catch(error => {
-                    onUnhandledError(error);
-                });
-
-                return;
-            }
-
-            if (selectedMethod && selectedMethod.id === PaymentMethodId.WAAVEDirect) {
-                const checkoutState = getCheckoutState();
-
-                const products:any[] = [];
-                const lineItems = checkoutState.data.getCart()?.lineItems;
-                lineItems?.customItems?.map(item => products.push(item));
-                lineItems?.digitalItems?.map(item => products.push(item));
-                lineItems?.giftCertificates?.map(item => products.push(item));
-                lineItems?.physicalItems?.map(item => products.push(item));
-
-                const discount_amount = checkoutState.data.getCoupons()?.reduce((accumulator, currentValue) => {
-                    return accumulator + currentValue.discountedAmount
-                }, 0);
-
-                const storeProfile = checkoutState.data.getConfig()?.storeProfile;
-                const links = checkoutState.data.getConfig()?.links;
-
-                const billingAddress = checkoutState.data.getBillingAddress();
-                const consignments = checkoutState.data.getConsignments();
-
-                const shippingAddress = consignments ? consignments[0].shippingAddress : {};
-                const shippingOption = consignments ? consignments[0].selectedShippingOption : {};
-
-                const customer = checkoutState.data.getCustomer();
-
-                const card_information = {
-                    values.cardNumber,
-                    values.cardExpiry,
-                    values.cardCode,
+                if (selectedMethod.id === PaymentMethodId.WAAVEDirect) {
+                    body['card_information'] = values;
+                    flag = true;
                 }
 
-                const body = {
-                    products,
-                    billing_address: billingAddress,
-                    shipping_address: shippingAddress,
-                    shipping_option: shippingOption,
-                    discount_amount,
-                    customer_id: customer ? customer.id : 0,
-                    storeProfile,
-                    links,
-                    card_information
-                };
+                const orderUrl = 'http://localhost';
+                //const orderUrl = 'http://staging-pg.getwaave.co';
+                //const orderUrl = 'http://pg.getwaave.co';
 
-                const createOrderUrl = 'http://localhost/bigcommerce/direct';
-                // const createOrderUrl = 'https://staging-pg.getwaave.co/bigcommerce/direct';
-                // const createOrderUrl = 'https://pg.getwaave.co/bigcommerce/direct';
+                let fetchUrl = orderUrl + '/bigcommerce/checkout';
+                if (flag) {
+                    fetchUrl = orderUrl + '/bigcommerce/direct';
+                }
 
-                fetch(createOrderUrl, {
+                fetch(fetchUrl, {
                     credentials: 'include',
                     method: 'POST',
                     headers: {
@@ -530,13 +477,20 @@ class Payment extends Component<PaymentProps & WithCheckoutPaymentProps & WithLa
                         return;
                     }
 
+                    if (flag) {
+                        onSubmit();
+                        return;
+                    }
+
                     // Clear the cart and redirect to WAAVE Payment Gateway
                     const cartId = checkoutState.data.getCart()?.id;
                     fetch('api/storefront/carts/' + cartId, {
                         method: "DELETE",
                         credentials: 'include'
                     }).then(() => {
-                        console.log("I'am here");
+                        // Redirect to WAAVE pg
+                        const query = new URLSearchParams(result);
+                        window.location.href = orderUrl + '/waavepay/checkout?' + query;
                     });
                 })
                 .catch(error => {
@@ -707,6 +661,7 @@ export function mapToPaymentProps({
         "type": "",
         "supportedCards": [],
         "config": {
+            "cardCode": true,
             "displayName": "Credit and Debit Cards Payment - powered by WAAVE",
             "testMode": false,
             "logo": "https://pg.getwaave.co/img/logo.png"
