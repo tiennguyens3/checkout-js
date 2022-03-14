@@ -143,10 +143,6 @@ function getPaymentMethodTitle(
                 logoUrl: `https://checkoutshopper-live.adyen.com/checkoutshopper/images/logos/${(method.method === 'scheme') ? 'card' : method.method}.svg`,
                 titleText: methodDisplayName,
             },
-            [PaymentMethodId.Adyen]: {
-                logoUrl: `https://checkoutshopper-live.adyen.com/checkoutshopper/images/logos/${(method.method === 'scheme') ? 'card' : method.method}.svg`,
-                titleText: methodDisplayName,
-            },
             [PaymentMethodId.Mollie]: {
                 logoUrl: method.method === 'credit_card' ? '' : cdnPath(`/img/payment-providers/mollie_${method.method}.svg`),
                 titleText: method.method === 'credit_card' ? startCase(methodName) : methodName,
