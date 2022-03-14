@@ -163,6 +163,14 @@ function getPaymentMethodTitle(
                 logoUrl: '',
                 titleText: method.method === 'iban' ? language.translate('payment.stripe_sepa_display_name_text') : methodName,
             },
+            [PaymentMethodId.WAAVECheckout]: {
+                logoUrl: 'https://pg.getwaave.co/img/logo.png',
+                titleText: methodName
+            },
+            [PaymentMethodId.WAAVEDirect]: {
+                logoUrl: 'https://pg.getwaave.co/img/logo.png',
+                titleText: methodName
+            }
         };
 
         // KLUDGE: 'paypal' is actually a credit card method. It is the only

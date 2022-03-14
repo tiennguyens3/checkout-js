@@ -651,8 +651,7 @@ export function mapToPaymentProps({
         "supportedCards": [],
         "config": {
             "displayName": "WAAVE Checkout: Credit & Debit Cards, Fast & Safe",
-            "testMode": false,
-            "logo": "https://pg.getwaave.co/img/logo.png"
+            "testMode": false
         }
     },
     {
@@ -663,8 +662,7 @@ export function mapToPaymentProps({
         "config": {
             "cardCode": true,
             "displayName": "Credit and Debit Cards Payment - powered by WAAVE",
-            "testMode": false,
-            "logo": "https://pg.getwaave.co/img/logo.png"
+            "testMode": false
         }
     }
     );
