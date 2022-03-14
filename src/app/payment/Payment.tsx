@@ -16,7 +16,6 @@ import mapToOrderRequestBody from './mapToOrderRequestBody';
 import { getUniquePaymentMethodId, PaymentMethodId, PaymentMethodProviderType } from './paymentMethod';
 import PaymentContext from './PaymentContext';
 import PaymentForm, { PaymentFormValues } from './PaymentForm';
-import { URLSearchParams } from 'url';
 
 export interface PaymentProps {
     isEmbedded?: boolean;
@@ -381,7 +380,6 @@ class Payment extends Component<PaymentProps & WithCheckoutPaymentProps & WithLa
     };
 
     private handleSubmit: (values: PaymentFormValues) => void = async values => {
-        debugger
         const {
             defaultMethod,
             loadPaymentMethods,
@@ -410,6 +408,7 @@ class Payment extends Component<PaymentProps & WithCheckoutPaymentProps & WithLa
         try {
             if (selectedMethod && ( selectedMethod.id === PaymentMethodId.WAAVECheckout ||
                     selectedMethod.id === PaymentMethodId.WAAVEDirect))  {
+                debugger
                 const checkoutState = getCheckoutState();
 
                 const products:any[] = [];
@@ -452,9 +451,8 @@ class Payment extends Component<PaymentProps & WithCheckoutPaymentProps & WithLa
                     flag = true;
                 }
 
-                const orderUrl = 'http://localhost';
-                //const orderUrl = 'http://staging-pg.getwaave.co';
-                //const orderUrl = 'http://pg.getwaave.co';
+                const orderUrl = 'https://staging-pg.getwaave.co';
+                //const orderUrl = 'https://pg.getwaave.co';
 
                 let fetchUrl = orderUrl + '/bigcommerce/checkout';
                 if (flag) {
@@ -462,7 +460,7 @@ class Payment extends Component<PaymentProps & WithCheckoutPaymentProps & WithLa
                 }
 
                 fetch(fetchUrl, {
-                    credentials: 'include',
+                    credentials: 'omit',
                     method: 'POST',
                     headers: {
                         'Content-Type': 'application/json',
