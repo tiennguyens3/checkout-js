@@ -39,6 +39,11 @@ class LocaleProvider extends Component<LocaleProviderProps> {
             },
             ({ data }) => data.getConfig()
         );
+
+        const config = JSON.parse(window.localStorage.getItem('store_config') || '');
+        if (config) {
+            this.setState({config});
+        }
     }
 
     componentWillUnmount(): void {

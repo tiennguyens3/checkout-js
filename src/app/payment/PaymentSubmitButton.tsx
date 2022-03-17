@@ -88,6 +88,7 @@ export interface PaymentSubmitButtonProps {
     methodType?: string;
     isDisabled?: boolean;
     initialisationStrategyType?: string;
+    isSubmittingWAAVE: boolean
 }
 
 interface WithCheckoutPaymentSubmitButtonProps {
@@ -99,6 +100,7 @@ const PaymentSubmitButton: FunctionComponent<PaymentSubmitButtonProps & WithChec
     isDisabled,
     isInitializing,
     isSubmitting,
+    isSubmittingWAAVE,
     methodGateway,
     methodId,
     methodName,
@@ -110,7 +112,7 @@ const PaymentSubmitButton: FunctionComponent<PaymentSubmitButtonProps & WithChec
             disabled={ isInitializing || isSubmitting || isDisabled }
             id="checkout-payment-continue"
             isFullWidth
-            isLoading={ isSubmitting }
+            isLoading={ isSubmittingWAAVE || isSubmitting }
             size={ ButtonSize.Large }
             type="submit"
             variant={ ButtonVariant.Action }

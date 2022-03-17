@@ -29,6 +29,7 @@ export interface PaymentFormProps {
     isTermsConditionsRequired?: boolean;
     isUsingMultiShipping?: boolean;
     isStoreCreditApplied: boolean;
+    isSubmittingWAAVE: boolean;
     methods: PaymentMethod[];
     selectedMethod?: PaymentMethod;
     shouldShowStoreCredit?: boolean;
@@ -81,6 +82,7 @@ const PaymentForm: FunctionComponent<PaymentFormProps & FormikProps<PaymentFormV
     isTermsConditionsRequired,
     isStoreCreditApplied,
     isUsingMultiShipping,
+    isSubmittingWAAVE,
     language,
     methods,
     onMethodSelect,
@@ -163,6 +165,7 @@ const PaymentForm: FunctionComponent<PaymentFormProps & FormikProps<PaymentFormV
                         methodId={ selectedMethodId }
                         methodName={ selectedMethod && getPaymentMethodName(language)(selectedMethod) }
                         methodType={ selectedMethod && selectedMethod.method }
+                        isSubmittingWAAVE= { isSubmittingWAAVE }
                     /> }
             </div>
         </Form>

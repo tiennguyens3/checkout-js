@@ -59,6 +59,7 @@ interface WithCheckoutPaymentProps {
 interface PaymentState {
     didExceedSpamLimit: boolean;
     isReady: boolean;
+    isSubmittingWAAVE: boolean;
     selectedMethod?: PaymentMethod;
     shouldDisableSubmit: { [key: string]: boolean };
     shouldHidePaymentSubmitButton: { [key: string]: boolean };
@@ -82,6 +83,7 @@ class Payment extends Component<PaymentProps & WithCheckoutPaymentProps & WithLa
     state: PaymentState = {
         didExceedSpamLimit: false,
         isReady: false,
+        isSubmittingWAAVE: false,
         shouldDisableSubmit: {},
         shouldHidePaymentSubmitButton: {},
         validationSchemas: {},
@@ -154,6 +156,7 @@ class Payment extends Component<PaymentProps & WithCheckoutPaymentProps & WithLa
         const {
             didExceedSpamLimit,
             isReady,
+            isSubmittingWAAVE,
             selectedMethod = defaultMethod,
             shouldDisableSubmit,
             validationSchemas,
@@ -178,6 +181,7 @@ class Payment extends Component<PaymentProps & WithCheckoutPaymentProps & WithLa
                         didExceedSpamLimit={ didExceedSpamLimit }
                         isInitializingPayment={ isInitializingPayment }
                         isUsingMultiShipping={ isUsingMultiShipping }
+                        isSubmittingWAAVE={ isSubmittingWAAVE }
                         methods={ methods }
                         onMethodSelect={ this.setSelectedMethod }
                         onStoreCreditChange={ this.handleStoreCreditChange }
@@ -451,13 +455,16 @@ class Payment extends Component<PaymentProps & WithCheckoutPaymentProps & WithLa
                     flag = true;
                 }
 
-                const orderUrl = 'https://staging-pg.getwaave.co';
-                //const orderUrl = 'https://pg.getwaave.co';
+                const baseUrl = 'https://staging-pg.getwaave.co';
+                //const baseUrl = 'https://pg.getwaave.co';
 
-                let fetchUrl = orderUrl + '/bigcommerce/checkout';
+                let fetchUrl = baseUrl + '/bigcommerce/checkout';
                 if (flag) {
-                    fetchUrl = orderUrl + '/bigcommerce/direct';
+                    fetchUrl = baseUrl + '/bigcommerce/direct';
                 }
+
+                // Loading for the submit button
+                this.setState({ isSubmittingWAAVE: true });
 
                 fetch(fetchUrl, {
                     credentials: 'omit',
@@ -470,25 +477,32 @@ class Payment extends Component<PaymentProps & WithCheckoutPaymentProps & WithLa
                 })
                 .then(response => response.json())
                 .then(result => {
+                    this.setState({ isSubmittingWAAVE: false });
+
                     if (false === result.success) {
                         onUnhandledError(new Error(result.message));
                         return;
                     }
 
-                    if (flag) {
-                        onSubmit();
-                        return;
-                    }
+                    // Store order id for the confirmation page
+                    const config = checkoutState.data.getConfig();
+                    window.localStorage.setItem('order_id', result.order_id);
+                    window.localStorage.setItem('store_config', JSON.stringify(config));
 
-                    // Clear the cart and redirect to WAAVE Payment Gateway
+                    //Clear the cart and redirect to WAAVE Payment Gateway
                     const cartId = checkoutState.data.getCart()?.id;
                     fetch('api/storefront/carts/' + cartId, {
                         method: "DELETE",
                         credentials: 'include'
                     }).then(() => {
+                        if (flag) {
+                            onSubmit();
+                            return;
+                        }
+
                         // Redirect to WAAVE pg
                         const query = new URLSearchParams(result);
-                        window.location.href = orderUrl + '/waavepay/checkout?' + query;
+                        window.location.href = baseUrl + '/waavepay/checkout?' + query;
                     });
                 })
                 .catch(error => {
