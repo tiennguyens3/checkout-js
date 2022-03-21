@@ -28,7 +28,7 @@ function isCustomCheckoutWindow(window: Window): window is CustomCheckoutWindow 
         renderCheckout,
     } = await loadFiles();
 
-    const orderIdWAAVE = Number(window.localStorage.getItem('order_id'));
+    const orderIdWAAVE = Number(window.sessionStorage.getItem('order_id'));
     if (orderIdWAAVE) {
         window.checkoutConfig.orderId = orderIdWAAVE;
     }

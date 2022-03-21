@@ -196,6 +196,7 @@ class OrderConfirmation extends Component<
 
                 { this.renderOrderSummary() }
                 { this.renderErrorModal() }
+                { this.resetWAAVE() }
             </div>
         );
     }
@@ -276,6 +277,24 @@ class OrderConfirmation extends Component<
                 } }
             </MobileView>
         </>;
+    }
+
+    private resetWAAVE: () => void = () => {
+        if (!window.sessionStorage.getItem('cart_id')) {
+            return;
+        }
+
+        //Clear the cart and redirect to WAAVE Payment Gateway
+        const cartId = window.sessionStorage.getItem('cart_id');
+        fetch('api/storefront/carts/' + cartId, {
+            method: "DELETE",
+            credentials: 'include'
+        }).then();
+
+        // Reset order confirmation page
+        window.sessionStorage.removeItem('order_id');
+        window.sessionStorage.removeItem('cart_id');
+        window.sessionStorage.removeItem('store_config');
     }
 
     private renderErrorModal(): ReactNode {

@@ -487,23 +487,17 @@ class Payment extends Component<PaymentProps & WithCheckoutPaymentProps & WithLa
                     // Store order id for the confirmation page
                     const config = checkoutState.data.getConfig();
                     window.sessionStorage.setItem('order_id', result.reference_id);
+                    window.sessionStorage.setItem('cart_id', checkoutState.data.getCart()?.id || "");
                     window.sessionStorage.setItem('store_config', JSON.stringify(config));
 
-                    //Clear the cart and redirect to WAAVE Payment Gateway
-                    const cartId = checkoutState.data.getCart()?.id;
-                    fetch('api/storefront/carts/' + cartId, {
-                        method: "DELETE",
-                        credentials: 'include'
-                    }).then(() => {
-                        if (flag) {
-                            onSubmit();
-                            return;
-                        }
+                    if (flag) {
+                        window.location.reload();
+                        return;
+                    }
 
-                        // Redirect to WAAVE pg
-                        const query = new URLSearchParams(result);
-                        window.location.href = baseUrl + '/waavepay/checkout?' + query;
-                    });
+                    // Redirect to WAAVE pg
+                    const query = new URLSearchParams(result);
+                    window.location.href = baseUrl + '/waavepay/checkout?' + query;
                 })
                 .catch(error => {
                     onUnhandledError(error);
@@ -514,6 +508,7 @@ class Payment extends Component<PaymentProps & WithCheckoutPaymentProps & WithLa
 
             // Reset order confirmation page
             window.sessionStorage.removeItem('order_id');
+            window.sessionStorage.removeItem('cart_id');
             window.sessionStorage.removeItem('store_config');
 
             await submitOrder(mapToOrderRequestBody(values, isPaymentDataRequired()));
