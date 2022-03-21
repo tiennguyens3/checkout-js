@@ -486,8 +486,8 @@ class Payment extends Component<PaymentProps & WithCheckoutPaymentProps & WithLa
 
                     // Store order id for the confirmation page
                     const config = checkoutState.data.getConfig();
-                    window.localStorage.setItem('order_id', result.reference_id);
-                    window.localStorage.setItem('store_config', JSON.stringify(config));
+                    window.sessionStorage.setItem('order_id', result.reference_id);
+                    window.sessionStorage.setItem('store_config', JSON.stringify(config));
 
                     //Clear the cart and redirect to WAAVE Payment Gateway
                     const cartId = checkoutState.data.getCart()?.id;
@@ -513,8 +513,8 @@ class Payment extends Component<PaymentProps & WithCheckoutPaymentProps & WithLa
             }
 
             // Reset order confirmation page
-            window.localStorage.removeItem('order_id');
-            window.localStorage.removeItem('store_config');
+            window.sessionStorage.removeItem('order_id');
+            window.sessionStorage.removeItem('store_config');
 
             await submitOrder(mapToOrderRequestBody(values, isPaymentDataRequired()));
             onSubmit();

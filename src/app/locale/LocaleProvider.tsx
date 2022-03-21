@@ -40,8 +40,8 @@ class LocaleProvider extends Component<LocaleProviderProps> {
             ({ data }) => data.getConfig()
         );
 
-        const config = JSON.parse(window.localStorage.getItem('store_config') || '');
-        if (config) {
+        if (window.sessionStorage.getItem('store_config')) {
+            const config = JSON.parse(window.sessionStorage.getItem('store_config') || '');
             this.setState({ config });
         }
     }

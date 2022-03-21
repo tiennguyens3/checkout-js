@@ -73,9 +73,9 @@ class OrderConfirmation extends Component<
             orderId,
         } = this.props;
 
-        const orderIdWAAVE = Number(window.localStorage.getItem('order_id'));
+        const orderIdWAAVE = Number(window.sessionStorage.getItem('order_id'));
         if (orderIdWAAVE) {
-            const config: StoreConfig = JSON.parse(window.localStorage.getItem('store_config') || '');
+            const config: StoreConfig = JSON.parse(window.sessionStorage.getItem('store_config') || '');
             this.setState({ config, orderIdWAAVE });
             this.initialize(config);
 
