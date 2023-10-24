@@ -4,11 +4,14 @@ const { copyFileSync } = require('fs');
 const MiniCssExtractPlugin = require('mini-css-extract-plugin');
 const { join } = require('path');
 const StyleLintPlugin = require('stylelint-webpack-plugin');
-const TerserPlugin = require('terser-webpack-plugin');
 const { DefinePlugin } = require('webpack');
 const WebpackAssetsManifest = require('webpack-assets-manifest');
 
-const { AsyncHookPlugin, BuildHookPlugin, getNextVersion, transformManifest } = require('./scripts/webpack');
+const { AsyncHookPlugin,
+    BuildHookPlugin,
+    getLoaderPackages: { aliasMap: alias, tsLoaderIncludes },
+    getNextVersion,
+    transformManifest } = require('./scripts/webpack');
 
 const ENTRY_NAME = 'checkout';
 const LIBRARY_NAME = 'checkout';
@@ -42,13 +45,14 @@ function appConfig(options, argv) {
             return {
                 entry: {
                     [ENTRY_NAME]: [
-                        join(__dirname, 'src', 'app', 'polyfill.ts'),
-                        join(__dirname, 'src', 'app', 'index.ts'),
+                        join(__dirname, 'packages', 'core','src', 'app', 'polyfill.ts'),
+                        join(__dirname, 'packages', 'core','src', 'app', 'index.ts'),
                     ],
                 },
                 mode,
                 devtool: isProduction ? 'source-map' : 'eval-source-map',
                 resolve: {
+                    alias,
                     extensions: ['.ts', '.tsx', '.js'],
                     // It seems some packages, i.e.: Formik, have incorrect
                     // source maps for their ESM bundle. Therefore, until that
@@ -59,14 +63,15 @@ function appConfig(options, argv) {
                 optimization: {
                     runtimeChunk: 'single',
                     minimizer: [
-                        new TerserPlugin({
-                            terserOptions: {
-                                output: {
-                                    comments: false,
+                        (compiler) => {
+                            const TerserPlugin = require('terser-webpack-plugin');
+                            new TerserPlugin({
+                                extractComments: false,
+                                terserOptions: {
+                                    sourceMap: true,
                                 },
-                            },
-                            sourceMap: true,
-                        }),
+                            }).apply(compiler);
+                        },
                     ],
                     splitChunks: {
                         chunks: 'all',
@@ -99,7 +104,7 @@ function appConfig(options, argv) {
                     path: isProduction ? join(__dirname, 'dist') : join(__dirname, 'build'),
                     filename: `${outputFilename}.js`,
                     chunkFilename: `${outputFilename}.js`,
-                    jsonpFunction: 'webpackJsonpCheckout',
+                    chunkLoadingGlobal: 'webpackJsonpCheckout',
                     library: LIBRARY_NAME,
                 },
                 plugins: [
@@ -115,11 +120,12 @@ function appConfig(options, argv) {
                     }),
                     new CircularDependencyPlugin({
                         exclude: /.*\.spec\.tsx?/,
-                        include: /src\/app/,
+                        include: /packages\/core\/src\/app/,
                     }),
                     new WebpackAssetsManifest({
                         entrypoints: true,
                         transform: assets => transformManifest(assets, appVersion),
+                        output: 'manifest.json'
                     }),
                     new BuildHookPlugin({
                         onSuccess() {
@@ -139,7 +145,7 @@ function appConfig(options, argv) {
                         },
                         {
                             test: /\.tsx?$/,
-                            include: join(__dirname, 'src'),
+                            include: tsLoaderIncludes,
                             use: [
                                 {
                                     loader: 'ts-loader',
@@ -151,7 +157,11 @@ function appConfig(options, argv) {
                         },
                         {
                             test: /app\/polyfill\.ts$/,
-                            include: join(__dirname, 'src'),
+                            include: [
+                                    join(__dirname, 'packages', 'core', 'src'),
+                                    join(__dirname, 'packages', 'locale', 'src'),
+                                    join(__dirname, 'packages', 'test-mocks', 'src'),
+                                ],
                             use: [
                                 {
                                     loader: 'babel-loader',
@@ -223,12 +233,13 @@ function loaderConfig(options, argv) {
         .then(appVersion => {
             return {
                 entry: {
-                    [LOADER_ENTRY_NAME]: join(__dirname, 'src', 'app', 'loader.ts'),
-                    [AUTO_LOADER_ENTRY_NAME]: join(__dirname, 'src', 'app', 'auto-loader.ts'),
+                    [LOADER_ENTRY_NAME]: join(__dirname,  'packages', 'core','src', 'app', 'loader.ts'),
+                    [AUTO_LOADER_ENTRY_NAME]: join(__dirname,  'packages', 'core', 'src', 'app', 'auto-loader.ts'),
                 },
                 mode,
                 devtool: isProduction ? 'source-map' : 'eval-source-map',
                 resolve: {
+                    alias,
                     extensions: ['.ts', '.tsx', '.js'],
                     mainFields: ['module', 'browser', 'main'],
                 },
@@ -240,17 +251,23 @@ function loaderConfig(options, argv) {
                 plugins: [
                     new AsyncHookPlugin({
                         onRun({ compiler, done }) {
-                            eventEmitter.on('app:done', () => {
-                                const definePlugin = new DefinePlugin({
-                                    LIBRARY_NAME: JSON.stringify(LIBRARY_NAME),
-                                    MANIFEST_JSON: JSON.stringify(require(
-                                        join(__dirname, isProduction ? 'dist' : 'build', 'manifest.json')
-                                    )),
-                                });
+                            let wasTriggeredBefore = false;
 
-                                definePlugin.apply(compiler);
-                                eventEmitter.emit('loader:done');
-                                done();
+                            eventEmitter.on('app:done', () => {
+                                if (!wasTriggeredBefore) {
+                                    const definePlugin = new DefinePlugin({
+                                        LIBRARY_NAME: JSON.stringify(LIBRARY_NAME),
+                                        MANIFEST_JSON: JSON.stringify(require(
+                                          join(__dirname, isProduction ? 'dist' : 'build', 'manifest.json')
+                                        )),
+                                    });
+
+                                    definePlugin.apply(compiler);
+                                    eventEmitter.emit('loader:done');
+                                    done();
+
+                                    wasTriggeredBefore = true;
+                                }
                             });
 
                             eventEmitter.on('app:error', () => {
@@ -261,8 +278,9 @@ function loaderConfig(options, argv) {
                     }),
                     new BuildHookPlugin({
                         onSuccess() {
-                            copyFileSync(`dist/${LOADER_ENTRY_NAME}-${appVersion}.js`, `dist/${LOADER_ENTRY_NAME}.js`);
-                            copyFileSync(`dist/${AUTO_LOADER_ENTRY_NAME}-${appVersion}.js`, `dist/${AUTO_LOADER_ENTRY_NAME}.js`);
+                            const folder = isProduction ? 'dist' : 'build';
+                            copyFileSync(`${folder}/${LOADER_ENTRY_NAME}-${appVersion}.js`, `${folder}/${LOADER_ENTRY_NAME}.js`);
+                            copyFileSync(`${folder}/${AUTO_LOADER_ENTRY_NAME}-${appVersion}.js`, `${folder}/${AUTO_LOADER_ENTRY_NAME}.js`);
                         },
                     }),
                 ],
@@ -275,7 +293,13 @@ function loaderConfig(options, argv) {
                         },
                         {
                             test: /\.tsx?$/,
-                            include: join(__dirname, 'src'),
+                            include: [
+                                join(__dirname, 'packages', 'core', 'src'),
+                                join(__dirname, 'packages', 'dom-utils', 'src'),
+                                join(__dirname, 'packages', 'legacy-hoc', 'src'),
+                                join(__dirname, 'packages', 'locale', 'src'),
+                                join(__dirname, 'packages', 'test-mocks', 'src'),
+                            ],
                             use: [
                                 {
                                     loader: 'babel-loader',
